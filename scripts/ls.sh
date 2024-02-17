@@ -144,3 +144,42 @@ done
 tableoptions
 
 
+list_tables() {
+    # databses=ls $dbms_path
+    while true; do
+        tables=()
+        index=1
+
+        # Populate the databases array with directory names
+        for table in "$dbms_path"/"$current_db"/*; do
+            if [ -d "$table" ]; then
+                tables+=("$(basename "$table")")
+                ((index++))
+            fi
+        done
+        tables+=("Exit")
+
+        # Display the menu
+        echo "Tables: "
+        select table in "${tables[@]}"; do
+            case $table in
+                "Exit")
+                    echo "Exiting..."
+                    break 2 
+                    ;;
+                *)
+                    # Validate if the selected option is in the databases array
+                    if [[ " ${databases[@]} " =~ " $db " ]]; then
+                        echo "Successfully Connected to $db!"
+                        current_db=$db
+                        tableoptions
+                    else
+                        echo "Invalid option. Please try again."
+                    fi
+                    ;;
+            esac
+        done
+    done
+}
+
+
