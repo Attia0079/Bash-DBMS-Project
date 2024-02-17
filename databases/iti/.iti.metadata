@@ -1,0 +1,12 @@
+table1:3
+col1:int
+col2:float
+col3:varchar
+table2:2
+col1:int
+col2:varchar
+table3:4
+col1:int
+col2:float
+col3:varchar
+col4:date
