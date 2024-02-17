@@ -37,7 +37,7 @@ welcome() {
     PS3="Please Choose a Number: "
 
     # Entry menu
-    select option in CreateDB ConnectDB RemoveDB ListDBs Exit
+    select option in CreateDB ConnectDB ListDBs DropDB Exit
     do
         case $option in
             CreateDB)
@@ -46,8 +46,8 @@ welcome() {
             ConnectDB)
                 ConnectDB
                 ;;
-            RemoveDB)
-                echo "RemoveDB option selected"
+            DropDB)
+                DropDB
                 ;;
             ListDBs)
                 echo "ListDBs option selected"
@@ -119,9 +119,49 @@ list_databases() {
     done
 }
 
+
 ConnectDB(){
     list_databases
 }
+
+DropDB(){
+    databses=ls $dbms_path
+    while true; do
+        databases=()
+        index=1
+
+        # Populate the databases array with directory names
+        for db in "$dbms_path"/*; do
+            if [ -d "$db" ]; then
+                databases+=("$(basename "$db")")
+                ((index++))
+            fi
+        done
+        databases+=("Exit")
+
+        # Display the menu
+        echo "Databases: "
+        select db in "${databases[@]}"; do
+            case $db in
+                "Exit")
+                    echo "Exiting..."
+                    break 2  # Exit both the select and the while loop
+                    ;;
+                *)
+                    # Validate if the selected option is in the databases array
+                    if [[ " ${databases[@]} " =~ " $db " ]]; then
+                        rm -rf $dbms_path/$db
+                        echo "$db Database Dropped Successfully."
+                        welcome
+                    else
+                        echo "Invalid option. Please try again."
+                    fi
+                    ;;
+            esac
+        done
+    done
+}
+
 
 #table options function
 tableoptions(){
@@ -246,5 +286,4 @@ done
 
 # the actual exectution!
 echo "Welcome to Bash-DBMS!"
-echo "$dbms_path/$DBName/.$DBName.metadata"
 welcome
