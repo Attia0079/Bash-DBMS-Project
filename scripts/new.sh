@@ -3,8 +3,6 @@
 dbms_path="databases"
 databases=$(ls "$dbms_path")
 
-# current_db=''
-
 # a function to validate the name: existence(duplicate or not), special characters, and validates that it has a good start
 validateTableName() {
     name=$1
@@ -49,11 +47,18 @@ welcome() {
                 DropDB
                 ;;
             ListDBs)
-                echo "ListDBs option selected"
+                find $dbms_path -maxdepth 1 -mindepth 1 -type d -printf "%f\n"
+                echo "press any key to get back to the main menu" key
+                read -n 1 -s -r
+                clear
+                welcome
                 ;;
             Exit)
+                clear
                 echo "BYE!"
+                exit 0
                 break
+
                 ;;
             *)
                 echo "Invalid option, please try again"
@@ -66,7 +71,6 @@ createdb() {
     while true; do
         read -p "Please Enter Database Name: " DBName
         if validateTableName "$DBName"; then
-            # If the database name is valid, proceed with creating the database
             if [ -d "$dbms_path/$DBName" ]; then
                 echo "Database Already exists"
             else 
@@ -81,7 +85,6 @@ createdb() {
 }
 
 list_databases() {
-    # databses=ls $dbms_path
     while true; do
         databases=()
         index=1
@@ -93,15 +96,15 @@ list_databases() {
                 ((index++))
             fi
         done
-        databases+=("Exit")
+        databases+=("Back")
 
         # Display the menu
         echo "Databases: "
         select db in "${databases[@]}"; do
             case $db in
-                "Exit")
+                "Back")
                     echo "Exiting..."
-                    break 2  # Exit both the select and the while loop
+                    welcome
                     ;;
                 *)
                     # Validate if the selected option is in the databases array
@@ -183,7 +186,73 @@ list_tables() {
     done
 }
 
+remove_table() {
+    while true; do
+        tables=()
+        index=1
 
+        # Populate the tables array with table names, excluding hidden files
+        while IFS= read -r -d '' table; do
+            table_basename=$(basename "$table")
+            tables+=("$table_basename")
+            ((index++))
+        done < <(find "$dbms_path/$current_db" -maxdepth 1 -type f ! -name ".*" -print0)
+
+        tables+=("Exit")
+
+        # Display the menu
+        echo "Tables: "
+        select table in "${tables[@]}"; do
+            case $table in
+                "Exit")
+                    echo "Exiting..."
+                    break 2 
+                    ;;
+                *)
+                    current_table=$table
+                    echo "You selected $table table. Insert data logic goes here."
+                    # Define an empty array to store the data
+                    data=()
+
+                    # Run the awk command and store each line in the array
+                    while IFS= read -r line; do
+                        data+=("$line")
+                    done < <(
+                        awk -F ':' -v table="$table" '
+                            {
+                                # Processing each line
+                                if ($1 == table) {
+                                    current_row = $0 
+                                    print $current_row
+                                    columns_count = $2
+
+                                    # Loop to print the next "columns_count" lines with their numbers
+                                    for (i = 1; i <= columns_count; i++) {
+                                        if (getline next_line > 0) {
+                                            print next_line
+                                        }
+                                    }
+                                }
+                            }
+                        ' "$dbms_path/$current_db/.$current_db.metadata"
+                            )
+                            # Print the contents of the array
+                            for line in "${data[@]}"; do
+                                echo $line
+                            done
+                            delete lines in the array from the metadata
+                            for line in "${data[@]}"; do
+                                sed -i "/$line/d" "$dbms_path/$current_db/.$current_db.metadata"
+                            done
+                        # the actual table deletion
+                        rm -f "$dbms_path/$current_db/$current_table"
+                    echo "Table Dropped Successfully!"
+                    tableoptions
+                    ;;
+            esac
+        done
+    done
+}
 
 ConnectDB(){
     list_databases
@@ -209,7 +278,8 @@ DropDB(){
             case $db in
                 "Exit")
                     echo "Exiting..."
-                    break 2  # Exit both the select and the while loop
+                    # break 2  # Exit both the select and the while loop
+                    welcome
                     ;;
                 *)
                     # Validate if the selected option is in the databases array
@@ -225,6 +295,7 @@ DropDB(){
         done
     done
 }
+
 
 #table options function
 tableoptions(){
@@ -297,17 +368,18 @@ tableoptions(){
                 fi
                 ;;
             "removeTB")
-                read -p "Please Enter Table Name: " TableName
-                if [ -z $TableName ]; then
-                    echo "input can't be empty"
-                    continue
-                fi
-                if [  -e $TableName ]; then
-                    rm "$TableName"
-                    echo "Table Removed Successfully"
-                else
-                    echo "Table doesn't exist"
-                fi
+                # read -p "Please Enter Table Name: " TableName
+                # if [ -z $TableName ]; then
+                #     echo "input can't be empty"
+                #     continue
+                # fi
+                # if [  -e $TableName ]; then
+                #     rm "$TableName"
+                #     echo "Table Removed Successfully"
+                # else
+                #     echo "Table doesn't exist"
+                # fi
+                remove_table
                 ;;
             "listTBs")
                 ls "$dbms_path/$current_db/" -F | grep -v '/$' | sed 's/[*=@|]$//'
@@ -354,8 +426,7 @@ tableoptions(){
     done
 }
 
-
-
 # the actual execution!
 echo "Welcome to Bash-DBMS!"
 welcome
+
