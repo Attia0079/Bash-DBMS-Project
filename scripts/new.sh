@@ -296,6 +296,140 @@ DropDB(){
     done
 }
 
+# UpdateTB(){
+#     while true; do
+#         tables=()
+#         index=1
+
+#         # Populate the tables array with table names, excluding hidden files
+#         while IFS= read -r -d '' table; do
+#             table_basename=$(basename "$table")
+#             tables+=("$table_basename")
+#             ((index++))
+#         done < <(find "$dbms_path/$current_db" -maxdepth 1 -type f ! -name ".*" -print0)
+
+#         tables+=("Exit")
+
+#         # Display the menu
+#         echo "Tables: "
+#         select table in "${tables[@]}"; do
+#             case $table in
+#                 "Exit")
+#                     echo "Exiting..."
+#                     break 2 
+#                     ;;
+#                 *)
+#                     current_table=$table
+#                     echo "You selected $table table. Insert data logic goes here."
+#                     # Define an empty array to store the data
+#                     data=()
+
+#                     # Run the awk command and store each line in the array
+#                     while IFS= read -r line; do
+#                         data+=("$line")
+#                     done < <(
+#                         awk -F ':' -v table="$table" '
+#                             {
+#                                 # Processing each line
+#                                 if ($1 == table) {
+#                                     current_row = $0 
+#                                     # print $current_row
+#                                     columns_count = $2
+
+#                                     # Loop to print the next "columns_count" lines with their numbers
+#                                     for (i = 1; i <= columns_count; i++) {
+#                                         if (getline next_line > 0) {
+#                                             print next_line
+#                                         }
+#                                     }
+#                                 }
+#                             }
+#                         ' "$dbms_path/$current_db/.$current_db.metadata"
+#                             )
+#                         select column in "${data[@]}"; do
+#                             case $table in
+#                                 "Exit")
+#                                     echo "Exiting..."
+#                                     break 2 
+#                                     ;;
+#                                 *)
+#                                     current_column_name=$column
+#                                     echo $current_column_name
+#                                     read -p "Just to confirm, Enter the Column Number Again: " current_column
+#                                     read -p "please enter the old value: " old_value
+#                                     read -p "please enter the new value: " new_value
+                                    
+#                                 ;;
+#                             esac
+#                         done
+   
+#                     echo "Table Updated Successfully!"
+#                     tableoptions
+#                     ;;
+#             esac
+#         done
+#     done
+# }  
+
+UpdateTB(){
+    while true; do
+    tables=()
+    index=1
+
+    # Populate the tables array with table names, excluding hidden files
+    while IFS= read -r -d '' table; do
+        table_basename=$(basename "$table")
+        tables+=("$table_basename")
+        ((index++))
+    done  < <(find "$dbms_path/$current_db" -maxdepth 1 -type f ! -name ".*" -print0)
+
+    tables+=("Exit")
+
+    # Display the menu
+    echo "Tables: "
+    select table in "${tables[@]}"; do
+        case $table in
+            "Exit")
+                echo "Exiting..."
+                break 2 
+                ;;
+            *)
+                current_table=$table
+                echo "You selected $table table to update"
+                
+                line_number=$(awk -F: -v word="$current_table" '$1 == word {print NR; exit}' "$dbms_path/$current_db/.$current_db.metadata")
+                value=$(awk -F: -v word="$current_table" '$1 == word {print $2; exit}' "$dbms_path/$current_db/.$current_db.metadata")
+                value=$((value + line_number))
+                line_number=$((line_number + 1))
+                awk -F: -v start="$line_number" -v end="$value" 'NR>=start && NR<=end' "$dbms_path/$current_db/.$current_db.metadata"
+                meta=$(awk -F: -v start="$line_number" -v end="$value" 'NR>=start && NR<=end' "$dbms_path/$current_db/.$current_db.metadata")
+
+
+                read -p "Please Enter Column Name to Update: " colname #column name
+                read -p "Please Enter New Value to Update: " uptval #new value
+                read -p "Please Enter Column Name to Set Condition with: " condcolname #??
+                read -p "Please Enter Value of Condition: " condval #oldvalue
+
+                updatedcolnum=$(echo "$meta" | awk -F: -v col="$colname" '$1==col {print NR}')
+                echo update column number $updatedcolnum
+
+                concolnum=$(echo "$meta" | awk -F: -v col="$condcolname" '$1==col {print NR}')
+                echo condition column nubmer $concolnum
+
+                awk -v n="$updatedcolnum" -v new_val="$uptval" -v c="$concolnum" -v condition_val="$condval" -F: 'BEGIN { OFS=":" } $c == condition_val { $n = new_val } 1' $dbms_path/$current_db/$current_table > tmp_file && mv tmp_file $dbms_path/$current_db/$current_table
+
+                
+
+
+                # read -p "Please Enter New Table Name: " NewTableName
+                # mv $TableName $NewTableName
+                echo "Table $current_table Is Updated Successfully"
+                tableoptions
+                ;;
+            esac
+        done
+    done
+}
 
 #table options function
 tableoptions(){
@@ -368,17 +502,6 @@ tableoptions(){
                 fi
                 ;;
             "removeTB")
-                # read -p "Please Enter Table Name: " TableName
-                # if [ -z $TableName ]; then
-                #     echo "input can't be empty"
-                #     continue
-                # fi
-                # if [  -e $TableName ]; then
-                #     rm "$TableName"
-                #     echo "Table Removed Successfully"
-                # else
-                #     echo "Table doesn't exist"
-                # fi
                 remove_table
                 ;;
             "listTBs")
@@ -399,27 +522,8 @@ tableoptions(){
                 fi
                 ;;
             "update")
-                read -p "Please Enter Table Name: " TableName
-                if [ -z $TableName ]; then
-                    echo "input can't be empty"
-                    continue
-                fi
-                if [ -e $TableName ]; then
-                    line_number=$(awk -F: -v word="$TableName" '$1 == word {print NR; exit}' ".metadata.txt")
-                    value=$(awk -F: -v word="$TableName" '$1 == word {print $2; exit}' ".metadata.txt")
-                    value=$((value + line_number))
-                    line_number=$((line_number + 1))
-                    awk -F: -v start="$line_number" -v end="$value" 'NR>=start && NR<=end' ".metadata.txt"
-
-
-                    # read -p "Please Enter New Table Name: " NewTableName
-                    # mv $TableName $NewTableName
-                    echo "Table Is Renamed Successfully"
-                else
-                    echo "Table doesn't exist"
-                fi
+                UpdateTB
                 ;;
-                # insert disconnect
             "insert")
                 list_tables
         esac
@@ -429,4 +533,3 @@ tableoptions(){
 # the actual execution!
 echo "Welcome to Bash-DBMS!"
 welcome
-
