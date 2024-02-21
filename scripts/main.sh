@@ -487,7 +487,7 @@ select_data() {
 
 #table options function
 tableoptions(){
-    select option in createTB removeTB listTBs renameTB select insert update disconnect
+    select option in createTB removeTB listTBs select insert update disconnect
     do
         case $option in
             "createTB")
@@ -560,20 +560,6 @@ tableoptions(){
                 ;;
             "listTBs")
                 ls "$dbms_path/$current_db/" -F | grep -v '/$' | sed 's/[*=@|]$//'
-                ;;
-            "renameTB")
-                read -p "Please Enter Table Name: " TableName
-                if [ -z $TableName ]; then
-                    echo "input can't be empty"
-                    continue
-                fi
-                if [ -e $TableName ]; then
-                    read -p "Please Enter New Table Name: " NewTableName
-                    mv "$TableName" "$NewTableName"
-                    echo "Table Is Renamed Successfully"
-                else
-                    echo "Table doesn't exist"
-                fi
                 ;;
             "update")
                 UpdateTB
