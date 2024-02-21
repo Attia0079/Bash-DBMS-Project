@@ -1,7 +1,11 @@
 #!/bin/bash
 
 dbms_path="databases"
-databases=$(ls "$dbms_path")
+databases=$(ls "$dbms_path")  
+current_db=""
+current_table=""
+ 
+
 
 # a function to validate the name: existence(duplicate or not), special characters, and validates that it has a good start
 validateTableName() {
@@ -431,9 +435,59 @@ UpdateTB(){
     done
 }
 
+select_data() {
+    while true; do
+        # Populate the tables array with table names, excluding hidden files
+        tables=()
+        while IFS= read -r -d '' table; do
+            table_basename=$(basename "$table")
+            tables+=("$table_basename")
+        done < <(find "$dbms_path/$current_db" -maxdepth 1 -type f ! -name ".*" -print0)
+
+        tables+=("Exit")
+
+        # Display the menu
+        echo "Tables: "
+        select table_option in "${tables[@]}"; do
+            case $table_option in
+                "Exit")
+                    echo "Exiting..."
+                    break 2 
+                    ;;
+                *)
+                    current_table=$table_option  # Update current_table with the selected table_option
+                    echo "Select data from $current_table:"
+                    metadata_file="$dbms_path/$current_db/.$current_db.metadata"
+                    line_number=$(awk -F: -v word="$current_table" '$1 == word {print NR; exit}' "$metadata_file")
+                    value=$(awk -F: -v word="$current_table" '$1 == word {print $2; exit}' "$metadata_file")
+                    start=$((line_number))
+                    end=$((start + value))
+                    
+                    # Get column names
+                    columns=$(awk -F: -v start="$((start + 1))" -v end="$end" 'NR>=start && NR<=end {printf "%s", $1; if (NR < end) printf " | "}' "$metadata_file")
+                    echo "-----------------------------------------------"
+                    echo "$columns"
+                    echo "-----------------------------------------------"
+
+                    
+                    # Display data
+                    awk -F: -v start="$start" -v end="$end" 'NR>1 && NR>=start && NR<=end {for (i = 1; i <= NF; i++) {printf "%s", $i; if (i < NF) printf "-"}; printf "\n"}' "$dbms_path/$current_db/$current_table"
+                    
+                    read -p "Press any key to return to table options: " -n 1 -r
+                    echo
+                    tableoptions
+                    ;;
+            esac
+        done
+    done
+}
+
+
+
+
 #table options function
 tableoptions(){
-    select option in createTB removeTB listTBs renameTB insert update disconnect
+    select option in createTB removeTB listTBs renameTB select insert update disconnect
     do
         case $option in
             "createTB")
@@ -526,10 +580,19 @@ tableoptions(){
                 ;;
             "insert")
                 list_tables
-        esac
+                ;;
+            "select")
+                select_data
+                ;;
+            "disconnect")
+                welcome
+            esac
     done
 }
 
-# the actual execution!
-echo "Welcome to Bash-DBMS!"
+clear
+echo "***********************"
+echo "*Welcome to Bash-DBMS!*"
+echo "***********************"
+
 welcome
