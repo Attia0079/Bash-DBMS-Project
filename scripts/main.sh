@@ -91,13 +91,13 @@ createdb() {
 list_databases() {
     while true; do
         databases=()
-        index=1
+        # index=1
 
         # Populate the databases array with directory names
         for db in "$dbms_path"/*; do
             if [ -d "$db" ]; then
                 databases+=("$(basename "$db")")
-                ((index++))
+                # ((index++))
             fi
         done
         databases+=("Back")
@@ -145,6 +145,7 @@ list_tables() {
             case $table in
                 "Exit")
                     echo "Exiting..."
+                    tableoptions
                     break 2 
                     ;;
                 *)
@@ -210,53 +211,29 @@ remove_table() {
             case $table in
                 "Exit")
                     echo "Exiting..."
+                    tableoptions
                     break 2 
                     ;;
                 *)
-                    current_table=$table
-                    echo "You selected $table table. Insert data logic goes here."
-                    # Define an empty array to store the data
-                    data=()
-
-                    # Run the awk command and store each line in the array
-                    while IFS= read -r line; do
-                        data+=("$line")
-                    done < <(
-                        awk -F ':' -v table="$table" '
-                            {
-                                # Processing each line
-                                if ($1 == table) {
-                                    current_row = $0 
-                                    print $current_row
-                                    columns_count = $2
-
-                                    # Loop to print the next "columns_count" lines with their numbers
-                                    for (i = 1; i <= columns_count; i++) {
-                                        if (getline next_line > 0) {
-                                            print next_line
-                                        }
-                                    }
-                                }
-                            }
-                        ' "$dbms_path/$current_db/.$current_db.metadata"
-                            )
-                            # Print the contents of the array
-                            for line in "${data[@]}"; do
-                                echo $line
-                            done
-                            delete lines in the array from the metadata
-                            for line in "${data[@]}"; do
-                                sed -i "/$line/d" "$dbms_path/$current_db/.$current_db.metadata"
-                            done
-                        # the actual table deletion
+                    # the actual table deletion   
+                   if [ -e "$dbms_path/$current_db/$current_table" ]; then
                         rm -f "$dbms_path/$current_db/$current_table"
-                    echo "Table Dropped Successfully!"
-                    tableoptions
+                        echo "Table Dropped Successfully!"
+                        tableoptions                        
+                        return 1
+                    fi
+                    if [ ! -e "$dbms_path/$current_db/$current_table" ]; then
+                        echo "Invalid table name"
+                        return 1
+                    fi
+
                     ;;
             esac
         done
     done
 }
+
+
 
 ConnectDB(){
     list_databases
@@ -300,80 +277,6 @@ DropDB(){
     done
 }
 
-# UpdateTB(){
-#     while true; do
-#         tables=()
-#         index=1
-
-#         # Populate the tables array with table names, excluding hidden files
-#         while IFS= read -r -d '' table; do
-#             table_basename=$(basename "$table")
-#             tables+=("$table_basename")
-#             ((index++))
-#         done < <(find "$dbms_path/$current_db" -maxdepth 1 -type f ! -name ".*" -print0)
-
-#         tables+=("Exit")
-
-#         # Display the menu
-#         echo "Tables: "
-#         select table in "${tables[@]}"; do
-#             case $table in
-#                 "Exit")
-#                     echo "Exiting..."
-#                     break 2 
-#                     ;;
-#                 *)
-#                     current_table=$table
-#                     echo "You selected $table table. Insert data logic goes here."
-#                     # Define an empty array to store the data
-#                     data=()
-
-#                     # Run the awk command and store each line in the array
-#                     while IFS= read -r line; do
-#                         data+=("$line")
-#                     done < <(
-#                         awk -F ':' -v table="$table" '
-#                             {
-#                                 # Processing each line
-#                                 if ($1 == table) {
-#                                     current_row = $0 
-#                                     # print $current_row
-#                                     columns_count = $2
-
-#                                     # Loop to print the next "columns_count" lines with their numbers
-#                                     for (i = 1; i <= columns_count; i++) {
-#                                         if (getline next_line > 0) {
-#                                             print next_line
-#                                         }
-#                                     }
-#                                 }
-#                             }
-#                         ' "$dbms_path/$current_db/.$current_db.metadata"
-#                             )
-#                         select column in "${data[@]}"; do
-#                             case $table in
-#                                 "Exit")
-#                                     echo "Exiting..."
-#                                     break 2 
-#                                     ;;
-#                                 *)
-#                                     current_column_name=$column
-#                                     echo $current_column_name
-#                                     read -p "Just to confirm, Enter the Column Number Again: " current_column
-#                                     read -p "please enter the old value: " old_value
-#                                     read -p "please enter the new value: " new_value
-                                    
-#                                 ;;
-#                             esac
-#                         done
-   
-#                     echo "Table Updated Successfully!"
-#                     tableoptions
-#                     ;;
-#             esac
-#         done
-#     done
-# }  
 
 UpdateTB(){
     while true; do
@@ -395,6 +298,7 @@ UpdateTB(){
         case $table in
             "Exit")
                 echo "Exiting..."
+                tableoptions
                 break 2 
                 ;;
             *)
@@ -452,6 +356,7 @@ select_data() {
             case $table_option in
                 "Exit")
                     echo "Exiting..."
+                    tableoptions
                     break 2 
                     ;;
                 *)
